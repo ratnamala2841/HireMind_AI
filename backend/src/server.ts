@@ -1,3 +1,7 @@
+import applicationRoutes from "./routes/application.routes";
+import resumeRoutes from "./routes/resume.routes";
+import candidateRoutes from "./routes/candidate.routes";
+import jobRoutes from "./routes/job.routes";
 import companyRoutes from "./routes/company.routes";
 import authRoutes from "./routes/auth.routes";
 import prisma from "./lib/prisma";
@@ -11,6 +15,10 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/companies", companyRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/candidates", candidateRoutes);
+app.use("/api/resumes", resumeRoutes);
+app.use("/api/applications", applicationRoutes);
 
 app.get("/api/health", async (_req, res) => {
   try {
