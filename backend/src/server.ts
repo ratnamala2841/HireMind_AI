@@ -8,6 +8,10 @@ import prisma from "./lib/prisma";
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
+import skillRoutes from "./routes/skill.routes";
+import jobSkillRoutes from "./routes/jobSkill.routes";
+import aiRoutes from "./routes/ai.routes";
+import interviewRoutes from "./routes/interview.routes";
 
 const app = express();
 
@@ -19,6 +23,10 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/skills", skillRoutes);
+app.use("/api/jobs", jobSkillRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/interviews", interviewRoutes);
 
 app.get("/api/health", async (_req, res) => {
   try {

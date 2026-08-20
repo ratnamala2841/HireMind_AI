@@ -36,12 +36,12 @@ export default function Home() {
         <h1 className="text-5xl md:text-6xl font-bold leading-tight">
           Hire Smarter.
           <br />
-          <span className="text-indigo-400">Recruit Better.</span>
+          <span className="text-indigo-400">Get Hired Better.</span>
         </h1>
 
         <p className="max-w-2xl mx-auto mt-6 text-lg text-slate-400">
-          HireMind AI helps recruiters understand candidates, match resumes
-          with jobs, explain rankings and make better hiring decisions.
+          HireMind AI connects recruiters, HR teams, and candidates through
+          intelligent recruitment, job matching, and AI-powered hiring tools.
         </p>
 
         <div className="flex justify-center gap-4 mt-10">
@@ -49,7 +49,7 @@ export default function Home() {
             href="/register"
             className="px-7 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 font-semibold"
           >
-            Start Recruiting →
+            Get Started →
           </Link>
 
           <Link
@@ -71,37 +71,37 @@ export default function Home() {
           <Feature
             icon="📄"
             title="AI Resume Parsing"
-            description="Extract candidate skills, experience and education automatically."
+            description="Extract candidate skills, experience, education, certifications, projects, and work history automatically from uploaded resumes."
           />
 
           <Feature
             icon="🎯"
             title="Resume–Job Matching"
-            description="Match candidates with jobs using intelligent scoring."
+            description="Compare candidate skills, experience, education, and qualifications with job requirements to calculate an intelligent job-match score."
           />
 
           <Feature
             icon="📊"
             title="Explainable Ranking"
-            description="Understand why a candidate received their match score."
+            description="Rank candidates based on job relevance and clearly explain the factors contributing to their AI-generated match score."
           />
 
           <Feature
             icon="⚖️"
             title="Fair Screening"
-            description="Support fair and blind candidate screening."
+            description="Promote fair candidate evaluation by focusing on job-relevant qualifications while reducing unnecessary bias during the initial screening process."
           />
 
           <Feature
             icon="🧠"
             title="AI Interview Assistant"
-            description="Generate interview questions and summarize feedback."
+            description="Generate role-specific interview questions, assist interviewers during evaluation, and summarize candidate feedback for faster decision-making."
           />
 
           <Feature
             icon="📈"
             title="Recruitment Intelligence"
-            description="Track hiring metrics and identify recruitment bottlenecks."
+            description="Provide recruitment insights, monitor hiring progress, and help HR and recruiters identify bottlenecks throughout the recruitment process."
           />
         </div>
       </section>

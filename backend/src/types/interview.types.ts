@@ -1,0 +1,14 @@
+export enum InterviewType {
+  TECHNICAL = "TECHNICAL",
+  HR = "HR",
+  BEHAVIORAL = "BEHAVIORAL",
+  FINAL = "FINAL",
+  AI_ASSESSMENT = "AI_ASSESSMENT",
+}
+
+export enum InterviewStatus {
+  SCHEDULED = "SCHEDULED",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}

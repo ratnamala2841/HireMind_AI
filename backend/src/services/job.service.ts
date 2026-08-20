@@ -6,9 +6,19 @@ interface CreateJobData {
   title: string;
   description: string;
   location?: string;
-  jobType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "FREELANCE";
+  jobType:
+    | "FULL_TIME"
+    | "PART_TIME"
+    | "CONTRACT"
+    | "INTERNSHIP"
+    | "FREELANCE";
   workMode: "REMOTE" | "HYBRID" | "ONSITE";
-  experienceLevel: "ENTRY" | "JUNIOR" | "MID" | "SENIOR" | "LEAD";
+  experienceLevel:
+    | "ENTRY"
+    | "JUNIOR"
+    | "MID"
+    | "SENIOR"
+    | "LEAD";
   minExperience?: number;
   maxExperience?: number;
   salaryMin?: number;
@@ -16,8 +26,28 @@ interface CreateJobData {
   currency?: string;
   openings?: number;
   applicationDeadline?: Date;
-}
+};
 
+/**
+ * Fields that are safe to return for a recruiter user.
+ *
+ * IMPORTANT:
+ * passwordHash is intentionally NOT included.
+ */
+const recruiterUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  phone: true,
+  profileImage: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+/**
+ * Create a new job.
+ */
 export const createJob = async (data: CreateJobData) => {
   const job = await prisma.job.create({
     data: {
@@ -42,38 +72,59 @@ export const createJob = async (data: CreateJobData) => {
   return job;
 };
 
+/**
+ * Get all jobs.
+ *
+ * Recruiter user information is returned without passwordHash.
+ */
 export const getJobs = async () => {
   return await prisma.job.findMany({
     orderBy: {
       createdAt: "desc",
     },
+
     include: {
       company: true,
+
       recruiter: {
         include: {
-          user: true,
+          user: {
+            select: recruiterUserSelect,
+          },
         },
       },
     },
   });
 };
 
+/**
+ * Get a single job by ID.
+ *
+ * Recruiter user information is returned without passwordHash.
+ */
 export const getJobById = async (id: number) => {
   return await prisma.job.findUnique({
     where: {
       id,
     },
+
     include: {
       company: true,
+
       recruiter: {
         include: {
-          user: true,
+          user: {
+            select: recruiterUserSelect,
+          },
         },
       },
     },
   });
 };
 
+/**
+ * Update a job.
+ */
 export const updateJob = async (
   id: number,
   data: Partial<CreateJobData>
@@ -86,6 +137,9 @@ export const updateJob = async (
   });
 };
 
+/**
+ * Delete a job.
+ */
 export const deleteJob = async (id: number) => {
   return await prisma.job.delete({
     where: {
@@ -94,6 +148,9 @@ export const deleteJob = async (id: number) => {
   });
 };
 
+/**
+ * Update job status.
+ */
 export const updateJobStatus = async (
   jobId: number,
   recruiterId: number,
@@ -114,6 +171,7 @@ export const updateJobStatus = async (
     where: {
       id: jobId,
     },
+
     data: {
       status,
     },
@@ -121,4 +179,3 @@ export const updateJobStatus = async (
 
   return updatedJob;
 };
-
