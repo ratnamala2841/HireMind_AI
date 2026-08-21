@@ -4,12 +4,8 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
-// TEMPORARY IDs
-// These match your current PostgreSQL data.
-const RECRUITER_ID = 1;
-const COMPANY_ID = 1;
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000/api";
 
 export default function CreateJobPage() {
   const router = useRouter();
@@ -26,17 +22,35 @@ export default function CreateJobPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    // Validate required frontend fields
+    /* --------------------------------------------------------
+       Validate required frontend fields
+       -------------------------------------------------------- */
+
     if (!title || !department || !location || !description) {
       alert("Please fill in all required fields.");
+      return;
+    }
+
+    /* --------------------------------------------------------
+       Get authentication token
+       -------------------------------------------------------- */
+
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+      alert("Your session has expired. Please log in again.");
+      router.push("/login");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      // Convert frontend employment type
-      // into the enum expected by the backend.
+      /* --------------------------------------------------------
+         Convert frontend employment type
+         into backend enum
+         -------------------------------------------------------- */
+
       let jobType = "FULL_TIME";
 
       if (type === "Part Time") {
@@ -47,16 +61,25 @@ export default function CreateJobPage() {
         jobType = "CONTRACT";
       }
 
-      // Send job to backend
+      /* --------------------------------------------------------
+         Send job to backend
+
+         IMPORTANT:
+         recruiterId and companyId are NOT sent here.
+
+         The backend gets them from:
+         JWT -> userId -> Recruiter -> companyId
+         -------------------------------------------------------- */
+
       const response = await fetch(`${API_URL}/jobs`, {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          recruiterId: RECRUITER_ID,
-          companyId: COMPANY_ID,
 
+        body: JSON.stringify({
           title,
           description,
           location,
@@ -73,24 +96,70 @@ export default function CreateJobPage() {
 
           currency: "INR",
           openings: 1,
+
+          /*
+           * Department is currently a frontend field.
+           * It is not being sent as a separate database field
+           * because the current backend job API does not require
+           * a department property.
+           */
+
+          ...(skills.trim()
+            ? {
+                skillsText: skills.trim(),
+              }
+            : {}),
         }),
       });
 
+      /* --------------------------------------------------------
+         Read backend response
+         -------------------------------------------------------- */
+
       const data = await response.json();
 
-      // Backend returned an error
+      /* --------------------------------------------------------
+         Backend returned an error
+         -------------------------------------------------------- */
+
       if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to create job");
+        if (response.status === 401) {
+          localStorage.removeItem("authToken");
+          alert("Your session has expired. Please log in again.");
+          router.push("/login");
+          return;
+        }
+
+        if (response.status === 403) {
+          alert(
+            data.message ||
+              "Only recruiters can create jobs."
+          );
+          return;
+        }
+
+        throw new Error(
+          data.message || "Failed to create job"
+        );
       }
 
-      console.log("Job created successfully:", data.job);
+      /* --------------------------------------------------------
+         Job successfully created
+         -------------------------------------------------------- */
+
+      console.log(
+        "Job created successfully:",
+        data.job
+      );
 
       alert("Job created successfully!");
 
-      // Go back to recruiter jobs page
       router.push("/recruiter/jobs");
     } catch (error) {
-      console.error("Create job error:", error);
+      console.error(
+        "Create job error:",
+        error
+      );
 
       alert(
         error instanceof Error
@@ -105,29 +174,35 @@ export default function CreateJobPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-4xl">
+
+        {/* Back button */}
         <button
+          type="button"
           onClick={() => router.back()}
           className="mb-6 text-sm font-medium text-slate-500 hover:text-indigo-600"
         >
           ← Back to Jobs
         </button>
 
+        {/* Page heading */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">
             Create New Job
           </h1>
 
           <p className="mt-2 text-slate-500">
-            Create a job posting and find the best candidates using HireMind
-            AI.
+            Create a job posting and find the best
+            candidates using HireMind AI.
           </p>
         </div>
 
+        {/* Job form */}
         <form
           onSubmit={handleSubmit}
           className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
         >
           <div className="grid gap-6 md:grid-cols-2">
+
             {/* Job Title */}
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -136,7 +211,9 @@ export default function CreateJobPage() {
 
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) =>
+                  setTitle(e.target.value)
+                }
                 placeholder="e.g. AI/ML Intern"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
               />
@@ -150,7 +227,9 @@ export default function CreateJobPage() {
 
               <input
                 value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                onChange={(e) =>
+                  setDepartment(e.target.value)
+                }
                 placeholder="e.g. Artificial Intelligence"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
               />
@@ -164,7 +243,9 @@ export default function CreateJobPage() {
 
               <input
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) =>
+                  setLocation(e.target.value)
+                }
                 placeholder="e.g. Chennai / Remote"
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
               />
@@ -178,7 +259,9 @@ export default function CreateJobPage() {
 
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) =>
+                  setType(e.target.value)
+                }
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
               >
                 <option>Full Time</option>
@@ -197,7 +280,9 @@ export default function CreateJobPage() {
 
             <input
               value={skills}
-              onChange={(e) => setSkills(e.target.value)}
+              onChange={(e) =>
+                setSkills(e.target.value)
+              }
               placeholder="Python, Machine Learning, SQL, FastAPI"
               className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
             />
@@ -215,7 +300,9 @@ export default function CreateJobPage() {
 
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) =>
+                setDescription(e.target.value)
+              }
               rows={7}
               placeholder="Describe the role, responsibilities and requirements..."
               className="w-full resize-none rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
@@ -224,21 +311,28 @@ export default function CreateJobPage() {
 
           {/* Buttons */}
           <div className="mt-8 flex justify-end gap-4">
+
+            {/* Cancel */}
             <button
               type="button"
-              onClick={() => router.push("/recruiter/jobs")}
+              onClick={() =>
+                router.push("/recruiter/jobs")
+              }
               disabled={isSubmitting}
               className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
 
+            {/* Create */}
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? "Creating..." : "Create Job"}
+              {isSubmitting
+                ? "Creating..."
+                : "Create Job"}
             </button>
           </div>
         </form>
