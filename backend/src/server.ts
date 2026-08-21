@@ -49,6 +49,6 @@ app.get("/api/health", async (_req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`HireMind AI backend running on port ${PORT}`);
 });
