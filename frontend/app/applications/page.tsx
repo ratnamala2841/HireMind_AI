@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -393,22 +394,9 @@ export default function ApplicationsPage() {
         const token =
           localStorage.getItem("authToken");
 
-        const role =
-          localStorage.getItem("userRole") ||
-          localStorage.getItem("role");
-
         if (!token) {
           setError(
             "Please login as a candidate to view your applications."
-          );
-
-          setLoading(false);
-          return;
-        }
-
-        if (role && role !== "CANDIDATE") {
-          setError(
-            "This page is available only for Candidate accounts."
           );
 
           setLoading(false);

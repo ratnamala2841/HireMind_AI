@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type UserRole = "RECRUITER" | "HR" | "CANDIDATE";
 
-function formatRole(role: string) {
+function formatRole(role: UserRole) {
   switch (role) {
     case "RECRUITER":
       return "Recruiter";
@@ -16,16 +16,21 @@ function formatRole(role: string) {
       return "Candidate";
 
     default:
-      return role;
+      return "Candidate";
   }
 }
 
 export default function Navbar() {
   const [userName, setUserName] = useState("User");
+
   const [userRole, setUserRole] =
     useState<UserRole>("CANDIDATE");
 
   useEffect(() => {
+    // ============================================================
+    // GET CURRENT LOGGED-IN USER
+    // ============================================================
+
     const storedName =
       localStorage.getItem("userName");
 
@@ -33,10 +38,12 @@ export default function Navbar() {
       localStorage.getItem("userRole") ||
       localStorage.getItem("role");
 
-    if (storedName) {
-      setUserName(storedName);
+    // Set actual logged-in user's name
+    if (storedName && storedName.trim()) {
+      setUserName(storedName.trim());
     }
 
+    // Set actual logged-in user's role
     if (
       storedRole === "RECRUITER" ||
       storedRole === "HR" ||
@@ -46,55 +53,82 @@ export default function Navbar() {
     }
   }, []);
 
+  // ============================================================
+  // USER INITIAL
+  // ============================================================
+
   const initial =
     userName.charAt(0).toUpperCase();
+
+  // ============================================================
+  // ROLE LABEL
+  // ============================================================
+
+  const roleLabel = formatRole(userRole);
 
   return (
     <header className="fixed left-64 right-0 top-0 z-10 h-16 border-b border-slate-200 bg-white">
       <div className="flex h-full items-center justify-between px-8">
 
-        {/* Welcome */}
+        {/* ======================================================
+            WELCOME
+        ====================================================== */}
+
         <div>
           <h2 className="text-lg font-semibold text-slate-800">
             Welcome back 👋
           </h2>
 
           <p className="text-xs text-slate-500">
-            Manage your recruitment journey
+            {userRole === "CANDIDATE"
+              ? "Manage your career journey"
+              : "Manage your recruitment journey"}
           </p>
         </div>
 
-        {/* Right side */}
+        {/* ======================================================
+            RIGHT SIDE
+        ====================================================== */}
+
         <div className="flex items-center gap-4">
 
-          {/* Notification */}
+          {/* ====================================================
+              NOTIFICATIONS
+          ==================================================== */}
+
           <button
             type="button"
             aria-label="Notifications"
-            className="rounded-lg p-2 text-lg hover:bg-slate-100"
+            className="rounded-lg p-2 text-lg transition hover:bg-slate-100"
           >
             🔔
           </button>
 
-          {/* User */}
+          {/* ====================================================
+              LOGGED-IN USER
+          ==================================================== */}
+
           <div className="flex items-center gap-3">
 
-            {/* Initial */}
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 font-semibold text-white">
+            {/* User Initial */}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-lg font-semibold text-white">
               {initial}
             </div>
 
-            {/* User information */}
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
+            {/* User Information */}
+            <div className="min-w-0">
+
+              {/* HireMind + Role */}
+              <p className="whitespace-nowrap text-sm font-semibold text-slate-800">
+                HireMind {roleLabel}
+              </p>
+
+              {/* Actual Logged-in User Name */}
+              <p className="whitespace-nowrap text-xs text-slate-500">
                 {userName}
               </p>
 
-              <p className="text-xs text-slate-500">
-                {formatRole(userRole)}
-              </p>
             </div>
-
           </div>
         </div>
       </div>

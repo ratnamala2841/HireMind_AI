@@ -39,7 +39,7 @@ const roleLinks: Record<UserRole, SidebarLink[]> = {
     },
     {
       name: "Interviews",
-      href: "/interviews",
+      href: "/recruiter/interviews",
       icon: "🎤",
     },
   ],
@@ -65,7 +65,7 @@ const roleLinks: Record<UserRole, SidebarLink[]> = {
     },
     {
       name: "Interviews",
-      href: "/interviews",
+      href: "/hr/interviews",
       icon: "🎤",
     },
   ],
@@ -102,6 +102,9 @@ const roleLinks: Record<UserRole, SidebarLink[]> = {
   ],
 };
 
+// ============================================================
+// GET STORED USER ROLE
+// ============================================================
 function getStoredRole(): UserRole {
   if (typeof window === "undefined") {
     return "CANDIDATE";
@@ -122,6 +125,9 @@ function getStoredRole(): UserRole {
   return "CANDIDATE";
 }
 
+// ============================================================
+// ROLE DISPLAY NAME
+// ============================================================
 function getRoleName(role: UserRole) {
   switch (role) {
     case "RECRUITER":
@@ -135,10 +141,14 @@ function getRoleName(role: UserRole) {
   }
 }
 
+// ============================================================
+// SIDEBAR
+// ============================================================
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const [role, setRole] = useState<UserRole>("CANDIDATE");
+  const [role, setRole] =
+    useState<UserRole>("CANDIDATE");
 
   useEffect(() => {
     setRole(getStoredRole());
@@ -148,10 +158,16 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-950 text-white">
-      {/* Logo */}
+      {/* ========================================================
+          LOGO
+      ======================================================== */}
       <div className="border-b border-slate-800 px-6 py-6">
         <h1 className="text-2xl font-bold">
-          Hire<span className="text-indigo-400">Mind</span>
+          Hire
+          <span className="text-indigo-400">
+            Mind
+          </span>
+
           <span className="ml-1 text-sm text-indigo-300">
             AI
           </span>
@@ -162,7 +178,9 @@ export default function Sidebar() {
         </p>
       </div>
 
-      {/* Current Role */}
+      {/* ========================================================
+          CURRENT ROLE
+      ======================================================== */}
       <div className="border-b border-slate-800 px-4 py-4">
         <div className="rounded-lg bg-slate-900 px-4 py-3">
           <p className="text-xs text-slate-400">
@@ -175,14 +193,19 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* ========================================================
+          NAVIGATION
+      ======================================================== */}
       <nav className="space-y-2 p-4">
         {links.map((link) => {
+          const isDashboard =
+            link.href === "/dashboard" ||
+            link.href === "/recruiter" ||
+            link.href === "/hr";
+
           const active =
             pathname === link.href ||
-            (link.href !== "/dashboard" &&
-              link.href !== "/recruiter" &&
-              link.href !== "/hr" &&
+            (!isDashboard &&
               pathname.startsWith(`${link.href}/`));
 
           return (
@@ -205,7 +228,9 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Logout */}
+      {/* ========================================================
+          LOGOUT
+      ======================================================== */}
       <div className="absolute bottom-0 w-full border-t border-slate-800 p-4">
         <Link
           href="/login"

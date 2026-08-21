@@ -1,5 +1,9 @@
 import { Router } from "express";
 import prisma from "../lib/prisma";
+import {
+  authenticate,
+  AuthRequest,
+} from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -311,394 +315,404 @@ router.get("/:id", async (req, res) => {
 /* ============================================================
    POST /api/jobs
    Create a new job
+
+   IMPORTANT:
+   recruiterId and companyId are NOT accepted from the frontend.
+
+   They are determined from the authenticated user:
+   JWT -> userId -> Recruiter -> companyId
    ============================================================ */
 
-router.post("/", async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      location,
+router.post(
+  "/",
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const {
+        title,
+        description,
+        location,
 
-      jobType,
-      workMode,
-      experienceLevel,
+        jobType,
+        workMode,
+        experienceLevel,
 
-      minExperience,
-      maxExperience,
+        minExperience,
+        maxExperience,
 
-      salaryMin,
-      salaryMax,
-      currency,
+        salaryMin,
+        salaryMax,
+        currency,
 
-      status,
-      openings,
-      applicationDeadline,
+        status,
+        openings,
+        applicationDeadline,
 
-      companyId,
-      recruiterId,
+        skillIds,
+      } = req.body;
 
-      skillIds,
-    } = req.body;
+      /* --------------------------------------------------------
+         Authentication
+         -------------------------------------------------------- */
 
-    /* --------------------------------------------------------
-       Required fields
-       -------------------------------------------------------- */
-
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: "Title and description are required",
-      });
-    }
-
-    if (!jobType || !isValidJobType(jobType)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Valid jobType is required: FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP or FREELANCE",
-      });
-    }
-
-    if (!workMode || !isValidWorkMode(workMode)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Valid workMode is required: REMOTE, HYBRID or ONSITE",
-      });
-    }
-
-    if (
-      !experienceLevel ||
-      !isValidExperienceLevel(experienceLevel)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Valid experienceLevel is required: ENTRY, JUNIOR, MID, SENIOR or LEAD",
-      });
-    }
-
-    if (!companyId || !recruiterId) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Company ID and recruiter ID are required",
-      });
-    }
-
-    /* --------------------------------------------------------
-       Validate company
-       -------------------------------------------------------- */
-
-    const parsedCompanyId = Number(companyId);
-    const parsedRecruiterId = Number(recruiterId);
-
-    if (
-      Number.isNaN(parsedCompanyId) ||
-      Number.isNaN(parsedRecruiterId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Company ID and recruiter ID must be valid numbers",
-      });
-    }
-
-    const company = await prisma.company.findUnique({
-      where: {
-        id: parsedCompanyId,
-      },
-    });
-
-    if (!company) {
-      return res.status(404).json({
-        success: false,
-        message: "Company not found",
-      });
-    }
-
-    /* --------------------------------------------------------
-       Validate recruiter
-       -------------------------------------------------------- */
-
-    const recruiter = await prisma.recruiter.findUnique({
-      where: {
-        id: parsedRecruiterId,
-      },
-    });
-
-    if (!recruiter) {
-      return res.status(404).json({
-        success: false,
-        message: "Recruiter not found",
-      });
-    }
-
-    /* --------------------------------------------------------
-       Validate recruiter belongs to company
-       -------------------------------------------------------- */
-
-    if (recruiter.companyId !== parsedCompanyId) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Recruiter does not belong to the selected company",
-      });
-    }
-
-    /* --------------------------------------------------------
-       Validate optional values
-       -------------------------------------------------------- */
-
-    const parsedMinExperience =
-      toOptionalNumber(minExperience);
-
-    const parsedMaxExperience =
-      toOptionalNumber(maxExperience);
-
-    const parsedSalaryMin =
-      toOptionalNumber(salaryMin);
-
-    const parsedSalaryMax =
-      toOptionalNumber(salaryMax);
-
-    const parsedOpenings =
-      openings === undefined ||
-      openings === null ||
-      openings === ""
-        ? 1
-        : Number(openings);
-
-    if (
-      Number.isNaN(parsedOpenings) ||
-      parsedOpenings < 1
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Openings must be at least 1",
-      });
-    }
-
-    if (
-      parsedMinExperience !== null &&
-      parsedMaxExperience !== null &&
-      parsedMinExperience > parsedMaxExperience
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Minimum experience cannot be greater than maximum experience",
-      });
-    }
-
-    if (
-      parsedSalaryMin !== null &&
-      parsedSalaryMax !== null &&
-      parsedSalaryMin > parsedSalaryMax
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Minimum salary cannot be greater than maximum salary",
-      });
-    }
-
-    const parsedDeadline =
-      toOptionalDate(applicationDeadline);
-
-    if (
-      applicationDeadline &&
-      !parsedDeadline
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid application deadline",
-      });
-    }
-
-    const finalStatus =
-      status && isValidJobStatus(status)
-        ? status
-        : "DRAFT";
-
-    /* --------------------------------------------------------
-       Validate skill IDs
-       -------------------------------------------------------- */
-
-    let normalizedSkillIds: number[] = [];
-
-    if (Array.isArray(skillIds)) {
-      normalizedSkillIds = skillIds
-        .map((id: unknown) => Number(id))
-        .filter(
-          (id: number) =>
-            !Number.isNaN(id)
-        );
-    }
-
-    if (normalizedSkillIds.length > 0) {
-      const skills = await prisma.skill.findMany({
-        where: {
-          id: {
-            in: normalizedSkillIds,
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      const existingSkillIds = new Set(
-        skills.map((skill) => skill.id)
-      );
-
-      const invalidSkillIds =
-        normalizedSkillIds.filter(
-          (id) => !existingSkillIds.has(id)
-        );
-
-      if (invalidSkillIds.length > 0) {
-        return res.status(400).json({
+      if (!req.user) {
+        return res.status(401).json({
           success: false,
-          message: "One or more skill IDs do not exist",
-          invalidSkillIds,
+          message: "Authentication required",
         });
       }
-    }
 
-    /* --------------------------------------------------------
-       Create job + job skills
-       -------------------------------------------------------- */
+      /* --------------------------------------------------------
+         Role validation
+         -------------------------------------------------------- */
 
-    const job = await prisma.$transaction(
-      async (transaction) => {
-        const createdJob =
-          await transaction.job.create({
-            data: {
-              title: String(title).trim(),
-              description: String(
-                description
-              ).trim(),
-
-              location:
-                location
-                  ? String(location).trim()
-                  : null,
-
-              jobType: jobType as any,
-              workMode: workMode as any,
-              experienceLevel:
-                experienceLevel as any,
-
-              minExperience:
-                parsedMinExperience,
-
-              maxExperience:
-                parsedMaxExperience,
-
-              salaryMin:
-                parsedSalaryMin,
-
-              salaryMax:
-                parsedSalaryMax,
-
-              currency:
-                currency
-                  ? String(currency).trim()
-                  : "INR",
-
-              status:
-                finalStatus as any,
-
-              openings:
-                parsedOpenings,
-
-              applicationDeadline:
-                parsedDeadline,
-
-              company: {
-                connect: {
-                  id: parsedCompanyId,
-                },
-              },
-
-              recruiter: {
-                connect: {
-                  id: parsedRecruiterId,
-                },
-              },
-            },
-          });
-
-        if (normalizedSkillIds.length > 0) {
-          await transaction.jobSkill.createMany({
-            data: normalizedSkillIds.map(
-              (skillId) => ({
-                jobId: createdJob.id,
-                skillId,
-                required: true,
-                importance: 1,
-              })
-            ),
-            skipDuplicates: true,
-          });
-        }
-
-        return createdJob;
+      if (req.user.role !== "RECRUITER") {
+        return res.status(403).json({
+          success: false,
+          message: "Only recruiters can create jobs",
+        });
       }
-    );
 
-    /* --------------------------------------------------------
-       Return complete created job
-       -------------------------------------------------------- */
+      /* --------------------------------------------------------
+         Find authenticated recruiter
+         -------------------------------------------------------- */
 
-    const completeJob =
-      await prisma.job.findUnique({
+      const recruiter = await prisma.recruiter.findUnique({
         where: {
-          id: job.id,
-        },
-
-        include: {
-          company: true,
-
-          recruiter: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-
-          skills: {
-            include: {
-              skill: true,
-            },
-          },
+          userId: req.user.userId,
         },
       });
 
-    res.status(201).json({
-      success: true,
-      message: "Job created successfully",
-      job: completeJob,
-    });
-  } catch (error) {
-    console.error(
-      "POST /api/jobs error:",
-      error
-    );
+      if (!recruiter) {
+        return res.status(404).json({
+          success: false,
+          message: "Recruiter profile not found for this user",
+        });
+      }
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to create job",
-    });
+      const recruiterId = recruiter.id;
+      const companyId = recruiter.companyId;
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Recruiter is not associated with a company",
+        });
+      }
+
+      /* --------------------------------------------------------
+         Required fields
+         -------------------------------------------------------- */
+
+      if (!title || !description) {
+        return res.status(400).json({
+          success: false,
+          message: "Title and description are required",
+        });
+      }
+
+      if (!jobType || !isValidJobType(jobType)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Valid jobType is required: FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP or FREELANCE",
+        });
+      }
+
+      if (!workMode || !isValidWorkMode(workMode)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Valid workMode is required: REMOTE, HYBRID or ONSITE",
+        });
+      }
+
+      if (
+        !experienceLevel ||
+        !isValidExperienceLevel(experienceLevel)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Valid experienceLevel is required: ENTRY, JUNIOR, MID, SENIOR or LEAD",
+        });
+      }
+
+      /* --------------------------------------------------------
+         Validate company
+         -------------------------------------------------------- */
+
+      const company = await prisma.company.findUnique({
+        where: {
+          id: companyId,
+        },
+      });
+
+      if (!company) {
+        return res.status(404).json({
+          success: false,
+          message: "Company not found",
+        });
+      }
+
+      /* --------------------------------------------------------
+         Validate optional values
+         -------------------------------------------------------- */
+
+      const parsedMinExperience =
+        toOptionalNumber(minExperience);
+
+      const parsedMaxExperience =
+        toOptionalNumber(maxExperience);
+
+      const parsedSalaryMin =
+        toOptionalNumber(salaryMin);
+
+      const parsedSalaryMax =
+        toOptionalNumber(salaryMax);
+
+      const parsedOpenings =
+        openings === undefined ||
+        openings === null ||
+        openings === ""
+          ? 1
+          : Number(openings);
+
+      if (
+        Number.isNaN(parsedOpenings) ||
+        parsedOpenings < 1
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Openings must be at least 1",
+        });
+      }
+
+      if (
+        parsedMinExperience !== null &&
+        parsedMaxExperience !== null &&
+        parsedMinExperience > parsedMaxExperience
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Minimum experience cannot be greater than maximum experience",
+        });
+      }
+
+      if (
+        parsedSalaryMin !== null &&
+        parsedSalaryMax !== null &&
+        parsedSalaryMin > parsedSalaryMax
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Minimum salary cannot be greater than maximum salary",
+        });
+      }
+
+      const parsedDeadline =
+        toOptionalDate(applicationDeadline);
+
+      if (
+        applicationDeadline &&
+        !parsedDeadline
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid application deadline",
+        });
+      }
+
+      const finalStatus =
+        status && isValidJobStatus(status)
+          ? status
+          : "DRAFT";
+
+      /* --------------------------------------------------------
+         Validate skill IDs
+         -------------------------------------------------------- */
+
+      let normalizedSkillIds: number[] = [];
+
+      if (Array.isArray(skillIds)) {
+        normalizedSkillIds = skillIds
+          .map((id: unknown) => Number(id))
+          .filter(
+            (id: number) =>
+              !Number.isNaN(id)
+          );
+      }
+
+      if (normalizedSkillIds.length > 0) {
+        const skills = await prisma.skill.findMany({
+          where: {
+            id: {
+              in: normalizedSkillIds,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        const existingSkillIds = new Set(
+          skills.map((skill) => skill.id)
+        );
+
+        const invalidSkillIds =
+          normalizedSkillIds.filter(
+            (id) => !existingSkillIds.has(id)
+          );
+
+        if (invalidSkillIds.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more skill IDs do not exist",
+            invalidSkillIds,
+          });
+        }
+      }
+
+      /* --------------------------------------------------------
+         Create job + job skills
+         -------------------------------------------------------- */
+
+      const job = await prisma.$transaction(
+        async (transaction) => {
+          const createdJob =
+            await transaction.job.create({
+              data: {
+                title: String(title).trim(),
+
+                description: String(
+                  description
+                ).trim(),
+
+                location:
+                  location
+                    ? String(location).trim()
+                    : null,
+
+                jobType: jobType as any,
+
+                workMode: workMode as any,
+
+                experienceLevel:
+                  experienceLevel as any,
+
+                minExperience:
+                  parsedMinExperience,
+
+                maxExperience:
+                  parsedMaxExperience,
+
+                salaryMin:
+                  parsedSalaryMin,
+
+                salaryMax:
+                  parsedSalaryMax,
+
+                currency:
+                  currency
+                    ? String(currency).trim()
+                    : "INR",
+
+                status:
+                  finalStatus as any,
+
+                openings:
+                  parsedOpenings,
+
+                applicationDeadline:
+                  parsedDeadline,
+
+                company: {
+                  connect: {
+                    id: companyId,
+                  },
+                },
+
+                recruiter: {
+                  connect: {
+                    id: recruiterId,
+                  },
+                },
+              },
+            });
+
+          if (normalizedSkillIds.length > 0) {
+            await transaction.jobSkill.createMany({
+              data: normalizedSkillIds.map(
+                (skillId) => ({
+                  jobId: createdJob.id,
+                  skillId,
+                  required: true,
+                  importance: 1,
+                })
+              ),
+              skipDuplicates: true,
+            });
+          }
+
+          return createdJob;
+        }
+      );
+
+      /* --------------------------------------------------------
+         Return complete created job
+         -------------------------------------------------------- */
+
+      const completeJob =
+        await prisma.job.findUnique({
+          where: {
+            id: job.id,
+          },
+
+          include: {
+            company: true,
+
+            recruiter: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+
+            skills: {
+              include: {
+                skill: true,
+              },
+            },
+          },
+        });
+
+      res.status(201).json({
+        success: true,
+        message: "Job created successfully",
+        job: completeJob,
+      });
+    } catch (error) {
+      console.error(
+        "POST /api/jobs error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to create job",
+      });
+    }
   }
-});
+);
 
 /* ============================================================
    PATCH /api/jobs/:id
